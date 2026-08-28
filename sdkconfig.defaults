@@ -1,0 +1,15 @@
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_FREERTOS_HZ=1000
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# O USB nativo do ESP32-S3 sera usado como host.
+CONFIG_USB_OTG_SUPPORTED=y
+
+# O S3 tem um unico PHY USB interno, disputado pelo controlador USB Serial/JTAG
+# e pelo USB-OTG. Como o OTG e quem vai atuar como host, o console secundario
+# pela USB nativa precisa ficar desligado, senao os dois brigam pelo PHY.
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+
+# Console local da logger, para depuracao e monitoramento: UART0 -> CH343 -> PC.
+CONFIG_ESP_CONSOLE_UART_CUSTOM=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
