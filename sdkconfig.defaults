@@ -13,3 +13,13 @@ CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
 # Console local da logger, para depuracao e monitoramento: UART0 -> CH343 -> PC.
 CONFIG_ESP_CONSOLE_UART_CUSTOM=y
 CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
+
+# O arquivo de captura usa nome maior que FAT 8.3.
+CONFIG_FATFS_LFN_HEAP=y
+
+# Captura bruta do console principal em /sdcard/uart0_capture.log.
+CONFIG_SD_CAPTURE_SCK_GPIO=4
+CONFIG_SD_CAPTURE_MOSI_GPIO=5
+CONFIG_SD_CAPTURE_MISO_GPIO=6
+CONFIG_SD_CAPTURE_CS_GPIO=7
+CONFIG_SD_CAPTURE_SPI_FREQ_KHZ=4000

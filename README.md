@@ -22,9 +22,9 @@ para espelhar o console na porta nativa — que é a configuração atual dela.
 
 ## Estado atual
 
-A primeira etapa escreve no console da logger os bytes recebidos da principal.
-O próximo passo é substituir o `stdout` de teste por um escritor com buffer
-para o microSD, mantendo a recepção USB independente da latência do cartão.
+A logger escreve no console e no arquivo bruto `/sdcard/uart0_capture.log` os
+bytes recebidos da principal. O arquivo preserva o fluxo sem cabeçalho ou
+conversão; a fila desacopla a recepção USB da latência do cartão.
 
 ## Hardware
 
@@ -53,3 +53,7 @@ idf.py flash monitor
 
 Durante os testes atuais, o console serial da logger aparece no computador em
 `/dev/tty.usbmodem5C372764841` (CH343 da própria logger, serial `5C37276484`).
+
+O padrão para o ESP32-S3 usa SPI nos GPIOs 4 (SCK), 5 (MOSI), 6 (MISO) e 7
+(CS). Esses pinos e os parâmetros da fila podem ser ajustados com `idf.py menuconfig`, no menu
+`Hubbi logger USB - captura no SD`.

@@ -1,0 +1,48 @@
+menu "Hubbi logger USB - captura no SD"
+
+config SD_CAPTURE_SCK_GPIO
+    int "SD SPI SCK GPIO"
+    range 0 48
+    default 4
+config SD_CAPTURE_MOSI_GPIO
+    int "SD SPI MOSI GPIO"
+    range 0 48
+    default 5
+config SD_CAPTURE_MISO_GPIO
+    int "SD SPI MISO GPIO"
+    range 0 48
+    default 6
+config SD_CAPTURE_CS_GPIO
+    int "SD SPI CS GPIO"
+    range 0 48
+    default 7
+config SD_CAPTURE_SPI_FREQ_KHZ
+    int "Frequencia SPI do SD (kHz)"
+    range 400 20000
+    default 4000
+config SD_CAPTURE_QUEUE_LENGTH
+    int "Quantidade de blocos na fila"
+    range 4 512
+    default 128
+config SD_CAPTURE_BLOCK_SIZE
+    int "Tamanho do bloco de captura"
+    range 64 1024
+    default 512
+config SD_CAPTURE_FLUSH_BYTES
+    int "Flush a cada N bytes"
+    range 512 1048576
+    default 4096
+config SD_CAPTURE_FLUSH_PERIOD_S
+    int "Flush no maximo a cada X segundos"
+    range 1 3600
+    default 5
+config SD_CAPTURE_TASK_STACK_SIZE
+    int "Tamanho da pilha da tarefa SD"
+    range 2048 16384
+    default 4096
+config SD_CAPTURE_TASK_PRIORITY
+    int "Prioridade da tarefa SD"
+    range 1 24
+    default 6
+
+endmenu

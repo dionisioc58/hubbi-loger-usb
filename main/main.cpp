@@ -9,6 +9,7 @@
 #include "freertos/task.h"
 #include "usb/cdc_acm_host.h"
 #include "usb/usb_host.h"
+#include "sd_capture.h"
 
 // A placa principal expoe o console pela USB nativa do ESP32-S3, que enumera
 // como USB Serial/JTAG: VID 303A / PID 1001, CDC-ACM padrao. Nao e um CH340,
@@ -27,8 +28,8 @@ static SemaphoreHandle_t s_disconnected;
 
 static bool on_rx(const uint8_t *data, size_t length, void *)
 {
-    // Primeira etapa: confirmar que o fluxo do console chega intacto.
-    // Depois este ponto sera ligado ao escritor do microSD.
+    // O enfileiramento e sem bloqueio; a tarefa do SD faz a escrita lenta.
+    (void)sd_capture_enqueue(data, length);
     fwrite(data, 1, length, stdout);
     fflush(stdout);
     return true;
@@ -61,6 +62,8 @@ extern "C" void app_main(void)
 {
     s_disconnected = xSemaphoreCreateBinary();
     assert(s_disconnected != nullptr);
+    ESP_ERROR_CHECK(sd_capture_init());
+    ESP_ERROR_CHECK(sd_capture_start());
 
     const usb_host_config_t host_config = {
         .skip_phy_setup = false,
