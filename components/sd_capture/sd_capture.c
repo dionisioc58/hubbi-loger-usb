@@ -1,8 +1,13 @@
 #include "sd_capture.h"
+
 #include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
+
 #include "driver/sdspi_host.h"
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
@@ -14,6 +19,8 @@
 static const char *TAG = "sd_capture";
 #define SD_MOUNT_POINT "/sdcard"
 #define SD_FILE_PATH SD_MOUNT_POINT "/uart0_capture.log"
+#define SD_FILE_PREFIX SD_MOUNT_POINT "/uart0_capture_"
+#define SD_MAX_FILE_SIZE UINT64_C(0xFFFFFFFF)
 
 typedef struct {
     uint16_t length;
@@ -23,8 +30,11 @@ typedef struct {
 static QueueHandle_t s_queue;
 static TaskHandle_t s_task;
 static FILE *s_file;
+static uint64_t s_file_size;
+static uint32_t s_next_file_index;
 static bool s_bus_initialized;
 static bool s_fs_mounted;
+static bool s_storage_full;
 static sdmmc_card_t *s_card;
 static portMUX_TYPE s_stats_lock = portMUX_INITIALIZER_UNLOCKED;
 static sd_capture_stats_t s_stats;
@@ -36,9 +46,55 @@ static void update_pending(void)
     portEXIT_CRITICAL(&s_stats_lock);
 }
 
+static void set_storage_full(void)
+{
+    if (s_storage_full) return;
+    s_storage_full = true;
+    portENTER_CRITICAL(&s_stats_lock);
+    s_stats.storage_full = true;
+    portEXIT_CRITICAL(&s_stats_lock);
+    ESP_LOGE(TAG, "SD cheio; captura interrompida sem sobrescrever arquivos");
+}
+
+static bool open_capture_file(void)
+{
+    char path[64];
+    for (uint32_t index = s_next_file_index; index < 1000000U; index++) {
+        if (index == 0) snprintf(path, sizeof(path), "%s", SD_FILE_PATH);
+        else snprintf(path, sizeof(path), "%s%04" PRIu32 ".log", SD_FILE_PREFIX, index);
+
+        struct stat info;
+        if (stat(path, &info) == 0) {
+            if ((uint64_t)info.st_size >= SD_MAX_FILE_SIZE) continue;
+            s_file = fopen(path, "ab");
+            if (!s_file) return false;
+            s_file_size = (uint64_t)info.st_size;
+            s_next_file_index = index;
+            ESP_LOGI(TAG, "Continuando %s em %" PRIu64 " bytes", path, s_file_size);
+            return true;
+        }
+        if (errno != ENOENT) return false;
+
+        int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0666);
+        if (fd >= 0) {
+            s_file = fdopen(fd, "ab");
+            if (!s_file) { close(fd); return false; }
+            s_file_size = 0;
+            s_next_file_index = index;
+            ESP_LOGI(TAG, "Criado novo arquivo de captura: %s", path);
+            return true;
+        }
+        if (errno == EEXIST) continue;
+        if (errno == ENOSPC) set_storage_full();
+        return false;
+    }
+    set_storage_full();
+    return false;
+}
+
 static bool mount_and_open(void)
 {
-    if (s_file) return true;
+    if (s_file || s_storage_full) return s_file != NULL;
     if (!s_fs_mounted) {
         sdmmc_host_t host = SDSPI_HOST_DEFAULT();
         host.max_freq_khz = CONFIG_SD_CAPTURE_SPI_FREQ_KHZ;
@@ -46,9 +102,7 @@ static bool mount_and_open(void)
             .mosi_io_num = CONFIG_SD_CAPTURE_MOSI_GPIO,
             .miso_io_num = CONFIG_SD_CAPTURE_MISO_GPIO,
             .sclk_io_num = CONFIG_SD_CAPTURE_SCK_GPIO,
-            .quadwp_io_num = -1,
-            .quadhd_io_num = -1,
-            .max_transfer_sz = 4000,
+            .quadwp_io_num = -1, .quadhd_io_num = -1, .max_transfer_sz = 4000,
         };
         if (!s_bus_initialized) {
             esp_err_t err = spi_bus_initialize(host.slot, &bus_config, SDSPI_DEFAULT_DMA);
@@ -74,16 +128,9 @@ static bool mount_and_open(void)
         }
         s_fs_mounted = true;
     }
-    s_file = fopen(SD_FILE_PATH, "ab");
-    if (!s_file) {
-        portENTER_CRITICAL(&s_stats_lock); s_stats.mount_errors++; portEXIT_CRITICAL(&s_stats_lock);
-        ESP_LOGW(TAG, "Falha ao abrir %s: errno=%d (%s)", SD_FILE_PATH, errno, strerror(errno));
-        return false;
-    }
+    if (!open_capture_file()) return false;
     portENTER_CRITICAL(&s_stats_lock); s_stats.card_mounted = true; portEXIT_CRITICAL(&s_stats_lock);
-    ESP_LOGI(TAG, "Captura bruta em %s (SCK=%d MOSI=%d MISO=%d CS=%d)", SD_FILE_PATH,
-             CONFIG_SD_CAPTURE_SCK_GPIO, CONFIG_SD_CAPTURE_MOSI_GPIO,
-             CONFIG_SD_CAPTURE_MISO_GPIO, CONFIG_SD_CAPTURE_CS_GPIO);
+    ESP_LOGI(TAG, "SD pronto: limite por arquivo=%" PRIu64 " bytes", SD_MAX_FILE_SIZE);
     return true;
 }
 
@@ -107,16 +154,26 @@ static void sd_capture_task(void *arg)
     TickType_t next_mount_attempt = 0;
     while (true) {
         TickType_t now = xTaskGetTickCount();
-        if (!s_file && now >= next_mount_attempt) {
+        if (!s_file && !s_storage_full && now >= next_mount_attempt) {
             if (!mount_and_open()) next_mount_attempt = now + pdMS_TO_TICKS(5000);
         }
         if (xQueueReceive(s_queue, &block, pdMS_TO_TICKS(250)) == pdTRUE) {
-            if (s_file && fwrite(block.data, 1, block.length, s_file) == block.length) {
-                portENTER_CRITICAL(&s_stats_lock); s_stats.bytes_written += block.length; portEXIT_CRITICAL(&s_stats_lock);
-                bytes_since_flush += block.length;
+            if (s_storage_full) {
+                /* O produtor ja contou esses bytes como descartados. */
             } else {
-                portENTER_CRITICAL(&s_stats_lock); s_stats.write_errors++; s_stats.bytes_dropped += block.length; portEXIT_CRITICAL(&s_stats_lock);
-                if (s_file) { fclose(s_file); s_file = NULL; }
+                if (s_file && s_file_size + block.length > SD_MAX_FILE_SIZE) {
+                    flush_file(); fclose(s_file); s_file = NULL; s_next_file_index++;
+                    open_capture_file();
+                }
+                if (s_file && fwrite(block.data, 1, block.length, s_file) == block.length) {
+                    s_file_size += block.length;
+                    portENTER_CRITICAL(&s_stats_lock); s_stats.bytes_written += block.length; portEXIT_CRITICAL(&s_stats_lock);
+                    bytes_since_flush += block.length;
+                } else {
+                    portENTER_CRITICAL(&s_stats_lock); s_stats.write_errors++; s_stats.bytes_dropped += block.length; portEXIT_CRITICAL(&s_stats_lock);
+                    if (errno == ENOSPC) set_storage_full();
+                    if (s_file) { fclose(s_file); s_file = NULL; }
+                }
             }
         }
         update_pending();
@@ -147,6 +204,10 @@ esp_err_t sd_capture_enqueue(const uint8_t *data, size_t length)
 {
     if (!data || length == 0) return ESP_OK;
     if (!s_queue) return ESP_ERR_INVALID_STATE;
+    if (s_storage_full) {
+        portENTER_CRITICAL(&s_stats_lock); s_stats.bytes_received += length; s_stats.bytes_dropped += length; portEXIT_CRITICAL(&s_stats_lock);
+        return ESP_ERR_NO_MEM;
+    }
     while (length) {
         capture_block_t block;
         const size_t chunk = length > sizeof(block.data) ? sizeof(block.data) : length;

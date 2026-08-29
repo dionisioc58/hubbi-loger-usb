@@ -13,6 +13,7 @@ typedef struct {
     uint32_t flush_count;
     uint32_t blocks_pending;
     bool card_mounted;
+    bool storage_full;
 } sd_capture_stats_t;
 
 #ifdef __cplusplus
