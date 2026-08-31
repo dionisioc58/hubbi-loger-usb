@@ -62,6 +62,70 @@ O padrão para o ESP32-S3 usa SPI nos GPIOs 4 (SCK), 5 (MOSI), 6 (MISO) e 7
 (CS). Esses pinos e os parâmetros da fila podem ser ajustados com `idf.py menuconfig`, no menu
 `Hubbi logger USB - captura no SD`.
 
+## Indicador RGB e intervalo de gravação
+
+O LED RGB endereçável (WS2812) usa brilho baixo e indica o estado do cartão:
+
+- verde piscando: captura ativa e gravando dados no SD;
+- amarelo piscando: drenando a fila depois da desconexão USB;
+- vermelho fixo: erro de montagem/escrita ou cartão cheio;
+- apagado: fila drenada, arquivo fechado e cartão seguro para remover.
+
+O GPIO padrão é o 38, usado na revisão v1.1 da ESP32-S3-DevKitC-1. A revisão
+original usa GPIO48; confirme a revisão/modelo da sua placa e ajuste
+`SD_CAPTURE_STATUS_LED_GPIO` no `menuconfig` se necessário. O brilho padrão é
+16/255 para reduzir o consumo.
+
+O gravador faz `fflush()` e `fsync()` quando acumula 4096 bytes ou quando passam
+5 segundos desde o último flush, o que ocorrer primeiro. A cada flush a logger
+emite no console local uma mensagem como:
+
+```text
+I (... ) sd_capture: flush SD: intervalo=... ms, arquivo=... bytes
+```
+
+Assim é possível verificar o intervalo real. A fila possui 128 blocos de 512
+bytes, totalizando 65.536 bytes de reserva. Se a escrita no cartão ficar atrás
+do USB e a fila encher, os bytes excedentes são descartados e contabilizados em
+`bytes_dropped`. O modo verbose da principal é aceito pelo transporte USB; ele
+apenas aumenta a taxa e, portanto, aumenta a chance de saturar essa fila.
+
+## Remoção segura do cartão
+
+O firmware interrompe a entrada quando recebe o evento de desconexão USB. Em
+seguida, mantém o LED amarelo piscando, grava os blocos restantes, executa
+`fflush()` e `fsync()`, fecha o arquivo e desmonta o filesystem. Só então apaga
+o LED e registra `SD seguro para remover` no console local.
+
+A sequência segura executada pelo firmware é:
+
+1. desconectar o cabo USB da placa principal;
+2. impedir novas entradas USB na fila;
+3. aguardar `blocks_pending == 0`;
+4. executar `fflush()` e `fsync()`;
+5. fechar o arquivo e desmontar o filesystem;
+6. apagar o LED, indicando “cartão liberado”.
+
+Na implementação atual, o LED apagado substitui o estado azul: ele só ocorre
+depois da sequência acima. Portanto, a sequência “desconectar o USB, aguardar o
+LED apagar e remover o cartão” é segura, desde que o LED esteja funcionando e
+não esteja vermelho. Se o LED não acender, deve-se aguardar a mensagem
+`SD seguro para remover` no console ou desligar a logger antes de retirar o
+cartão.
+
+## Alteração de hardware recomendada
+
+O botão de ejeção continua sendo útil para um comando explícito, mas não é
+necessário para o procedimento acima: desconectar o cabo USB já inicia a
+sequência de parada. Um botão seria recomendado apenas se a logger precisar
+continuar conectada à principal enquanto o usuário troca o cartão.
+
+Bluetooth está desabilitado no `sdkconfig`. No ESP32-S3, o Kconfig do alvo
+mantém o componente Wi-Fi compilável por padrão, mas o firmware não chama
+`esp_wifi_init()` nem inicia qualquer interface de rede; portanto o rádio não
+é ativado e não há consumo operacional de Wi-Fi. O firmware usa somente USB
+host, UART do console, SPI do SD e o LED RGB.
+
 ## Estimativa de capacidade e riscos
 
 Uma análise do projeto `HUBBI-OBD-IDF` encontrou como maior linha determinística

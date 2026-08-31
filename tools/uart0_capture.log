@@ -1,0 +1,66 @@
+[0;33mW (367294) twai: [checkCANCommunication] Tentativa 2 de 5 falhou. Tentando novamente...[0m
+[0;33mW (378294) twai: [checkCANCommunication] Tentativa 3 de 5 falhou. Tentando novamente...[0m
+[0;33mW (400294) twai: [checkCANCommunication] Tentativa 5 de 5 falhou. Tentando novamente...[0m
+[0;32mI (403) app_init: App version:      versão_1.8.4-3-gf7f5234[0m
+[0;32mI (409) app_init: Compile time:     Aug 30 2026 23:45:19[0m
+[0;32mI (419) app_init: ELF file SHA256:  9d409e53b...[0m
+32mI (425) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (430) efuse_init: Max chip rev:     v0.99 [0m
+[0;32mI (435) efuse_init: Chip rev:         v0.2[0m
+[0;32mI (440) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (447) heap_init: At 3FCAFE80 len 00039890 (230 KiB): RAM[0m
+[0;32mI (453) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM[0m
+[0;32mI (459) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRA
+[0;32mI (472) spi_flash: detected chip: boya[0m
+[0;32mI (476) spi_flash: flash io: dio[0m
+[0;33mW (480) tsens: legacy driver is deprecated, please migrate to `driver/temperature_sensor.h`[0m
+[0;32mI (489) sleep_gpio: Configure to isolate all GPIO pins in sleep state[0m
+[0;32mI (496) sleep_gpio: Enable automatic switching of GPIO sleep configuration[0m
+[0;32mI (504) main_task: Started on CPU0[0m
+[0;32mI (514) main_task: Calling app_main()[0m
+
+[0;32mI (524) main: ==========================[0m
+[0;32mI (524) main: Iniciando drivers[0m
+[0;32mI (524) main: ==========================
+[0m
+[0;31mE (534) rtc_module: [rtc_get_time] Falha no RTC: hora não atualizada[0m
+[0;32mI (1334) save: [save_init] Inicializando particao do LittleFS[0m
+[0;32mI (1334) save: [littlefsInfo] Espaço Total: 11952.00 KB (11.67 MB)[0m
+[0;32mI (1334) save: [littlefsInfo] Espaço Usado: 8.00 KB (0.01 MB)[0m
+[0;32mI (1334) save: [littlefsInfo] Espaço Livre: 11944.00 KB (11.66 MB)[0m
+
+[0;31mE (1344) rtc_module: [rtc_get_time] Falha no RTC: hora não atualizada[0m
+[0;33mW (1354) save: [updateFilePath] Timestamp invalido fornecido. Tentando obter do RTC.[0m
+[0;31mE (1364) rtc_module: [rtc_get_time] Falha no RTC: hora não atualizada[0m
+[0;31mE (1364) save: [updateFilePath] RTC falhou. Usando timestamp do sistema.[0m
+[0;32mI (1374) save: [save_init] LittleFS inicializado com sucesso
+[0m
+[0;31mE (1384) rtc_module: [rtc_get_time] Falha no RTC: hora não atualizada[0m
+[0;32mI (1414) nvs_module: [nvs_manager_init] NVS inicializado com sucesso
+[0m
+[0;31mE (1414) nvs_module: [nvs_manager_load_mqtt_credentials] Erro ao abrir NVS namespace para leitura: ESP_ERR_NVS_NOT_FOUND[0m
+[0;31mE (1424) main: Erro ao carregar credenciais MQTT: ESP_ERR_NVS_NOT_FOUND[0m
+[0;31mE (1424) nvs_module: [nvs_manager_load_data] Erro ao abrir NVS namespace para leitura: ESP_ERR_NVS_NOT_FOUND[0m
+[0;31mE (1434) rtc_module: [rtc_get_time] Falha no RTC: hora não atualizada[0m
+[0;32mI (1444) main: Iniciando CAN...[0m
+[0;32mI (1454) twai: [twai_init] Twai parado. Iniciando[0m
+[0;32mI (1454) twai: [twai_init] Sucesso ao instalar driver Twai[0m
+[0;32mI (1464) twai: [twai_init] Sucesso ao configurar alertas[0m
+[0;32mI (1464) twai: [checkCANCommunication] Transmissão CAN bem-sucedida.[0m
+[0;33mW (2274) twai: [checkCANCommunication] Tentativa 1 de 5 falhou. Tentando novamente...[0m
+[0;32mI (12274) twai: [checkCANCommunication] Transmissão CAN bem-sucedida.[0m
+[0;33mW (13074) twai: [checkCANCommunication] Tentativa 2 de 5 falhou. Tentando novamente...[0m
+[0;32mI (23074) twai: [checkCANCommunication] Transmissão CAN bem-sucedida.[0m
+[0;33mW (23874) twai: [checkCANCommunication] Tentativa 3 de 5 falhou. Tentando novamente...[0m
+[0;32mI (33874) twai: [checkCANCommunication] Transmissão CAN bem-sucedida.[0m
+[0;33mW (34674) twai: [checkCANCommunication] Tentativa 4 de 5 falhou. Tentando novamente...[0m
+[0;32mI (44674) twai: [checkCANCommunication] Transmissão CAN bem-sucedida.[0m
+[0;33mW (45474) twai: [checkCANCommunication] Tentativa 5 de 5 falhou. Tentando novamente...[0m
+[0;31mE (55474) twai: [checkCANCommunication] Falha na comunicação CAN após 5 tentativas.[0m
+[0;31mE (55474) rtc_module: [rtc_get_time] Falha no RTC: hora não atualizada[0m
+[0;32mI (60474) twai: [checkCANCommunication] Transmissão CAN bem-sucedida.[0m
+[0;33mW (61274) twai: [checkCANCommunication] Tentativa 1 de 5 falhou. Tentando novamente...[0m
+[0;32mI (71274) twai: [checkCANCommunication] Transmissão CAN bem-sucedida.[0m
+[0;33mW (72074) twai: [checkCANCommunication] Tentativa 2 de 5 falhou. Tentando novamente...[0m
+[0;32mI (82074) twai: [checkCANCommunication] Transmissão CAN bem-sucedida.[0m
+[0;33mW (82874) twai: [checkCANCommunication] Tentativa 3 de 5 falhou. Tentando novamente...[0m

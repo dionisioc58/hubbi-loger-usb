@@ -1,5 +1,14 @@
 menu "Hubbi logger USB - captura no SD"
 
+config SD_CAPTURE_STATUS_LED_GPIO
+    int "GPIO do LED RGB de status (WS2812)"
+    range 0 48
+    default 48
+    help
+        GPIO conectado ao LED RGB enderecavel (WS2812) da placa. GPIO48 e o
+        pino desta placa, confirmado no hardware. GPIO38 aparece em outras
+        variantes ESP32-S3 DevKit; use o menuconfig se a sua for diferente.
+
 config SD_CAPTURE_SCK_GPIO
     int "SD SPI SCK GPIO"
     range 0 48
@@ -36,6 +45,10 @@ config SD_CAPTURE_FLUSH_PERIOD_S
     int "Flush no maximo a cada X segundos"
     range 1 3600
     default 5
+config SD_CAPTURE_STATS_PERIOD_S
+    int "Resumo de estatisticas a cada X segundos (0 desliga)"
+    range 0 3600
+    default 30
 config SD_CAPTURE_TASK_STACK_SIZE
     int "Tamanho da pilha da tarefa SD"
     range 2048 16384
@@ -44,5 +57,10 @@ config SD_CAPTURE_TASK_PRIORITY
     int "Prioridade da tarefa SD"
     range 1 24
     default 6
+
+config SD_CAPTURE_STATUS_LED_BRIGHTNESS
+    int "Brilho do LED RGB de status"
+    range 1 255
+    default 4
 
 endmenu

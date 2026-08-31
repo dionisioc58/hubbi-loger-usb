@@ -39,6 +39,7 @@ static void on_event(const cdc_acm_host_dev_event_data_t *event, void *)
 {
     if (event->type == CDC_ACM_HOST_DEVICE_DISCONNECTED) {
         ESP_LOGW(TAG, "placa principal desconectada");
+        sd_capture_input_disconnected();
         // O handle so pode ser liberado aqui; depois disso ele fica invalido.
         cdc_acm_host_close(event->data.cdc_hdl);
         xSemaphoreGive(s_disconnected);
@@ -65,10 +66,9 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(sd_capture_init());
     ESP_ERROR_CHECK(sd_capture_start());
 
-    const usb_host_config_t host_config = {
-        .skip_phy_setup = false,
-        .intr_flags = ESP_INTR_FLAG_LEVEL1,
-    };
+    usb_host_config_t host_config = {};
+    host_config.skip_phy_setup = false;
+    host_config.intr_flags = ESP_INTR_FLAG_LEVEL1;
     ESP_ERROR_CHECK(usb_host_install(&host_config));
     ESP_ERROR_CHECK(cdc_acm_host_install(nullptr));
 
@@ -117,6 +117,7 @@ extern "C" void app_main(void)
         }
 
         ESP_LOGI(TAG, "placa principal conectada; capturando console");
+        sd_capture_input_connected();
 
         xSemaphoreTake(s_disconnected, portMAX_DELAY);
     }

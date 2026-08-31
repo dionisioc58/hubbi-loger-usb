@@ -4,3 +4,5 @@ sdkconfig.old
 managed_components/
 sdkconfig
 sdkconfig.bak.*
+.DS_Store
+tools/*.html
