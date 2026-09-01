@@ -270,7 +270,15 @@ static bool mount_and_open(void)
     s_error = false;
     s_safe_to_remove = false;
     portENTER_CRITICAL(&s_stats_lock); s_stats.card_mounted = true; portEXIT_CRITICAL(&s_stats_lock);
-    ESP_LOGI(TAG, "SD pronto: limite por arquivo=%" PRIu64 " bytes", SD_MAX_FILE_SIZE);
+    uint64_t total_bytes = 0;
+    uint64_t free_bytes = 0;
+    if (esp_vfs_fat_info(SD_MOUNT_POINT, &total_bytes, &free_bytes) == ESP_OK) {
+        ESP_LOGI(TAG, "SD pronto: cartao=%s capacidade=%" PRIu64 " bytes, livre=%" PRIu64
+                 " bytes, limite por arquivo=%" PRIu64 " bytes",
+                 s_card->cid.name, total_bytes, free_bytes, SD_MAX_FILE_SIZE);
+    } else {
+        ESP_LOGI(TAG, "SD pronto: limite por arquivo=%" PRIu64 " bytes", SD_MAX_FILE_SIZE);
+    }
     return true;
 }
 
@@ -307,6 +315,9 @@ static void unmount_capture(void)
         esp_vfs_fat_sdcard_unmount(SD_MOUNT_POINT, s_card);
         s_card = NULL;
         s_fs_mounted = false;
+        portENTER_CRITICAL(&s_stats_lock);
+        s_stats.card_mounted = false;
+        portEXIT_CRITICAL(&s_stats_lock);
     }
     if (s_bus_initialized) {
         sdmmc_host_t host = SDSPI_HOST_DEFAULT();
@@ -324,6 +335,21 @@ static void sd_capture_task(void *arg)
     TickType_t last_stats = last_flush;
     s_last_flush_tick = last_flush;
     TickType_t next_mount_attempt = 0;
+
+    /* Verifica o cartao logo no boot, mesmo antes de a placa principal USB
+       conectar. A abertura do arquivo tambem valida que o sistema de arquivos
+       esta montado e que ainda e possivel criar/continuar a captura. */
+    if (mount_and_open()) {
+        ESP_LOGI(TAG, "diagnostico SD no boot: OK; cartao montado e arquivo de captura acessivel");
+        unmount_capture();
+        s_safe_to_remove = true;
+        ESP_LOGI(TAG, "diagnostico SD no boot concluido; cartao desmontado com seguranca");
+    } else {
+        ESP_LOGW(TAG, "diagnostico SD no boot: INDISPONIVEL; captura sera tentada novamente quando a placa conectar");
+        unmount_capture();
+        s_safe_to_remove = true;
+    }
+
     while (true) {
         TickType_t now = xTaskGetTickCount();
         if (!s_file && !s_storage_full && s_capture_enabled && now >= next_mount_attempt) {
